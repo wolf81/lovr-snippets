@@ -5,6 +5,6 @@ local channel = lovr.thread.getChannel('test')
 local x = args[1]
 
 while true do
-  x = x + 1
-  channel:push(x)
+    x = x + 1
+    channel:push(x)
 end
