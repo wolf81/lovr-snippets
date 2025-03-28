@@ -162,11 +162,13 @@ local function readPalette()
     local data = file:read("*all")  -- Read the entire file
     file:close()
 
+    -- 256 * 3 (rgb)
     if #data ~= 768 then
         error("Invalid palette file size. Expected 768 bytes, got " .. #data)
     end
 
-    local palette = ffi.new("uint8_t[256][3]")                     -- 256-color palette
+    -- 256-color palette
+    local palette = ffi.new("uint8_t[256][3]")
     ffi.copy(palette, data, 768)
 
     return palette
@@ -257,22 +259,32 @@ local bsp = {
 bsp.header = readHeader(file)
 print("version: " .. bsp.header.version)
 
-bsp.planes = readLump(file, bsp.header.planes, 'plane_t')
-print('planes: ' .. #bsp.planes)
-bsp.miptex = readTextures(file, bsp.header.miptex)
-print('miptex: ' .. #bsp.miptex)
-bsp.vertices = readLump(file, bsp.header.vertices, 'vertex_t')
-print('vertices: ' .. #bsp.vertices)
-bsp.texinfo = readLump(file, bsp.header.texinfo, 'surface_t')
-print('texinfo: ' .. #bsp.texinfo)
-bsp.faces = readLump(file, bsp.header.faces, 'face_t')
-print('faces: ' .. #bsp.faces)
-bsp.lface = readLump(file, bsp.header.lface, 'uint16_t')
-print('lface: ' .. #bsp.lface)
-bsp.edges = readLump(file, bsp.header.edges, 'edge_t')
-print('edges: ' .. #bsp.edges)
--- bsp.models = readLump(file, bsp.header.models, 'model_t')
--- print('models: ' .. #bsp.models)
+while true do
+    bsp.planes = readLump(file, bsp.header.planes, 'plane_t')
+    print('planes: ' .. #bsp.planes)
+    bsp.miptex = readTextures(file, bsp.header.miptex)
+    print('miptex: ' .. #bsp.miptex)
+    bsp.vertices = readLump(file, bsp.header.vertices, 'vertex_t')
+    print('vertices: ' .. #bsp.vertices)
+    bsp.texinfo = readLump(file, bsp.header.texinfo, 'surface_t')
+    print('texinfo: ' .. #bsp.texinfo)
+    bsp.faces = readLump(file, bsp.header.faces, 'face_t')
+    print('faces: ' .. #bsp.faces)
+    bsp.lface = readLump(file, bsp.header.lface, 'uint16_t')
+    print('lface: ' .. #bsp.lface)
+    bsp.edges = readLump(file, bsp.header.edges, 'edge_t')
+    print('edges: ' .. #bsp.edges)
+    bsp.models = readLump(file, bsp.header.models, 'model_t')
+    print('models: ' .. #bsp.models)
+
+    print('faces', bsp.models[1].face_num)
+
+    -- TODO: in order to push BSP structure, first serialize to a supported type
+    -- channel:push(bsp)
+
+    break
+end
+
 
 file:close()
 
