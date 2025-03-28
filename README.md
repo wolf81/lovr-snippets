@@ -16,6 +16,10 @@ Make a texture fill the full screen.
 
 Communicate from main thread to secondary thread and vice versa.
 
+## Thread File
+
+Start a thread from a separate file and pass start argument.
+
 ## Load BSP
 
 Load a Quake 1 BSP file.
