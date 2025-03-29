@@ -192,23 +192,23 @@ local function readTextures(file, lump)
         local out_buffer = ffi.new('uint8_t[?]', out_size)
 
         -- replace indexed colors with colors from palette
-        for i = 0, tex_size - 1 do
+        for j = 0, tex_size - 1 do
             local color_idx = img_buffer[i]
-            out_buffer[i * 4 + 0] = palette[color_idx][0]
-            out_buffer[i * 4 + 1] = palette[color_idx][1]
-            out_buffer[i * 4 + 2] = palette[color_idx][2]
-            out_buffer[i * 4 + 3] = 255
+            out_buffer[j * 4 + 0] = palette[color_idx][0]
+            out_buffer[j * 4 + 1] = palette[color_idx][1]
+            out_buffer[j * 4 + 2] = palette[color_idx][2]
+            out_buffer[j * 4 + 3] = 255
         end
 
         -- now generate an image
         local blob = lovr.data.newBlob(ffi.string(out_buffer, tex_size * 4), tex_name)
         local image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob)
-        table.insert(textures, {
+        textures[i - 1] = {
             image = lovr.graphics.newTexture(image, '2d'),
             name = tex_name,
             width = tex_info.width,
             height = tex_info.height,
-        })
+        }
     end
 
     return textures
@@ -227,8 +227,8 @@ local function readVertices(file, lump)
 
     -- Convert to Lua table
     local result = {}
-    for i = 1, count do
-        local v = array[i - 1] -- Adjust 0-based index
+    for i = 0, count - 1 do
+        local v = array[i]
         result[i] = lovr.math.newVec3(v.x, v.y, v.z)
     end
     
@@ -250,14 +250,14 @@ local function readSurfaces(file, lump)
 
     -- Convert to Lua table
     local result = {}
-    for i = 1, count do
-        local v = array[i - 1] -- Adjust 0-based index
+    for i = 0, count - 1 do
+        local v = array[i] -- Adjust 0-based index
         result[i] = {
             vector_s = lovr.math.newVec3(v.vectorS.x, v.vectorS.y, v.vectorS.z),
             dist_s = tonumber(v.distS),
             vector_t = lovr.math.newVec3(v.vectorT.x, v.vectorT.y, v.vectorT.z),
             dist_t = tonumber(v.distT),
-            texture_id = tonumber(v.texture_id + 1),
+            texture_id = tonumber(v.texture_id),
             animated = tonumber(v.animated),
         }
     end
@@ -280,8 +280,8 @@ local function readPlanes(file, lump)
 
     -- Convert to Lua table
     local result = {}
-    for i = 1, count do
-        local v = array[i - 1] -- Adjust 0-based index
+    for i = 0, count - 1 do
+        local v = array[i] -- Adjust 0-based index
         result[i] = {
             normal = lovr.math.newVec3(v.normal.x, v.normal.y, v.normal.z),
             distance = tonumber(v.distance),
@@ -307,14 +307,14 @@ local function readFaces(file, lump)
 
     -- Convert to Lua table
     local result = {}
-    for i = 1, count do
-        local v = array[i - 1] -- Adjust 0-based index
+    for i = 0, count - 1 do
+        local v = array[i] -- Adjust 0-based index
         result[i] = {
-            plane_id = tonumber(v.plane_id + 1),
+            plane_id = tonumber(v.plane_id),
             side = tonumber(v.side),
-            edge_id = tonumber(v.ledge_id + 1),
+            edge_id = tonumber(v.ledge_id),
             num_edges = tonumber(v.ledge_num),
-            surface_id = tonumber(v.texinfo_id + 1),
+            surface_id = tonumber(v.texinfo_id),
             type_light = tonumber(v.typelight),
             base_light = tonumber(v.baselight),
             light_map = tonumber(v.lightmap),
@@ -322,7 +322,7 @@ local function readFaces(file, lump)
         }
 
         for j = 0, 1 do
-            table.insert(result[i].lights, tonumber(v.lights[j]))
+            result[i].lights[j] = tonumber(v.lights[j])
         end
     end
 
@@ -344,11 +344,11 @@ local function readEdges(file, lump)
 
     -- Convert to Lua table
     local result = {}
-    for i = 1, count do
-        local v = array[i - 1] -- Adjust 0-based index
+    for i = 0, count - 1 do
+        local v = array[i] -- Adjust 0-based index
         result[i] = {
-            vertex0 = tonumber(v.vertex0 + 1),
-            vertex1 = tonumber(v.vertex1 + 1),
+            vertex0 = tonumber(v.vertex0),
+            vertex1 = tonumber(v.vertex1),
         }
     end
 
@@ -370,8 +370,8 @@ local function readEdgeList(file, lump)
 
     -- Convert to Lua table
     local result = {}
-    for i = 1, count do
-        local v = array[i - 1] -- Adjust 0-based index
+    for i = 0, count - 1 do
+        local v = array[i] -- Adjust 0-based index
         result[i] = tonumber(v)
     end
 
@@ -396,7 +396,7 @@ local function readGeometry(bsp, faces, edges, edge_list)
 
         local vertices = {}
 
-        for edge = 1, num_edges do
+        for edge = 0, num_edges - 1 do
             local edge_id = edge_list[edge + face.edge_id]
             local vertex_id = 0
 
@@ -422,6 +422,9 @@ local function readGeometry(bsp, faces, edges, edge_list)
                 uv          = uv,
             })
         end
+
+        -- local copy = { vertices[1].normal, vertices[1].position, vertices[1].uv }
+        table.insert(vertices, vertices[1])
 
         table.insert(results, {
             texture = texture.image,
