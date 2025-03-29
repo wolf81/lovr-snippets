@@ -1,3 +1,5 @@
+io.stdout:setvbuf('no')
+
 -- Create a new status channel
 local channel = lovr.thread.getChannel('status')
 
