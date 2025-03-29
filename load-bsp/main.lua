@@ -6,7 +6,7 @@ local channel = lovr.thread.getChannel('status')
 -- Create a new thread called 'thread'
 local thread = lovr.thread.newThread('bsp_loader.lua')
 
-local drawables = {}
+local meshes = {}
 
 function lovr.load()
     -- Start the thread
@@ -22,32 +22,28 @@ function lovr.update(dt)
             print('generate meshes')
 
             for _, geometry in ipairs(bsp.geometry) do
-                local material = lovr.graphics.newMaterial({
-                    texture = geometry.image,
-                })
-
                 local vertices = {}
 
                 for _, vertex in ipairs(geometry.vertices) do
+                    local px, py, pz = vertex.position:unpack()
+                    local nx, ny, nz = vertex.normal:unpack()
+                    local ux, uy = vertex.uv:unpack()
                     table.insert(vertices, {
-                        vertex.position:unpack(),
-                        vertex.normal:unpack(),
-                        vertex.uv:unpack(),
+                        px, py, pz, nx, ny, nz, ux, uy
                     })
                 end
 
-                table.insert(drawables, {
-                    mesh = lovr.graphics.newMesh(vertices),
-                    material = material,
-                })
+                local mesh = lovr.graphics.newMesh(vertices)
+                mesh:setMaterial(geometry.image)
+
+                table.insert(meshes, mesh)
             end
         end
     end
 end
 
 function lovr.draw(pass)
-    for _, drawable in ipairs(drawables) do
-        pass:setMaterial(drawable.material)
-        pass:mesh(drawable.mesh)
+    for _, mesh in ipairs(meshes) do
+        pass:draw(mesh)
     end
 end
