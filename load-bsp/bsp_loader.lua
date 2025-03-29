@@ -423,9 +423,6 @@ local function readGeometry(bsp, faces, edges, edge_list)
             })
         end
 
-        -- loop back to first vertex
-        table.insert(vertices, vertices[1])
-
         table.insert(results, {
             texture = texture.image,
             vertices = vertices,
