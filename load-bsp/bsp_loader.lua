@@ -423,7 +423,7 @@ local function readGeometry(bsp, faces, edges, edge_list)
             })
         end
 
-        -- local copy = { vertices[1].normal, vertices[1].position, vertices[1].uv }
+        -- loop back to first vertex
         table.insert(vertices, vertices[1])
 
         table.insert(results, {
