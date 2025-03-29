@@ -35,6 +35,7 @@ function lovr.update(dt)
 
                 local mesh = lovr.graphics.newMesh(vertices)
                 mesh:setMaterial(geometry.image)
+                -- mesh:setDrawMode('lines')
 
                 table.insert(meshes, mesh)
             end
@@ -43,6 +44,7 @@ function lovr.update(dt)
 end
 
 function lovr.draw(pass)
+    pass:setWireframe(true)
     for _, mesh in ipairs(meshes) do
         pass:draw(mesh)
     end
