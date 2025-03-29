@@ -2,6 +2,7 @@ local args = {...}
 local filename = args[1]
 
 local lovr = { 
+    math = require 'lovr.math',
     data = require 'lovr.data',
     thread = require 'lovr.thread',
     filesystem = require 'lovr.filesystem',
@@ -22,21 +23,7 @@ ffi.cdef[[
 
     typedef struct {
         int32_t version;
-        lump_t entities;
-        lump_t planes;
-        lump_t miptex;
-        lump_t vertices;
-        lump_t visilist;
-        lump_t nodes;
-        lump_t texinfo;
-        lump_t faces;
-        lump_t lightmaps;
-        lump_t clipnodes;
-        lump_t leafs;
-        lump_t lface;
-        lump_t edges;
-        lump_t ledges;
-        lump_t models;
+        lump_t lumps[15];
     } header_t;
 
     typedef struct {
@@ -75,7 +62,7 @@ ffi.cdef[[
         int16_t texinfo_id;
         uint8_t typelight;
         uint8_t baselight;
-        uint8_t light[2];
+        uint8_t lights[2];
         int32_t lightmap;
     } face_t;
 
@@ -130,27 +117,22 @@ end
 local function readHeader(file)
     local data = file:read(ffi.sizeof('header_t'))
     if not data then return nil end
-    return ffi.cast("header_t*", data)[0]
-end
 
-local function readLump(file, lump, type)
-    file:seek('set', lump.offset)
-    local count = lump.length / ffi.sizeof(type)
-    print(lump.offset, lump.length, count)
+    local raw = ffi.cast("header_t*", data)[0]
 
-    -- Read entire lump at once
-    local data = file:read(lump.length)
-    if not data then return {} end
+    local header = {
+        version = tonumber(raw.version),
+        lumps = {},
+    }
 
-    -- Cast the entire buffer into an array of the structure type
-    local array = ffi.cast(type .. "*", data)
-
-    -- Convert to Lua table
-    local result = {}
-    for i = 1, count do
-        result[i] = array[i - 1] -- Adjust 0-based index
+    for i = 0, 14 do
+        table.insert(header.lumps, { 
+            offset = tonumber(raw.lumps[i].offset),
+            length = tonumber(raw.lumps[i].length),
+        })
     end
-    return result
+
+    return header
 end
 
 local function readPalette()
@@ -170,6 +152,8 @@ local function readPalette()
     -- 256-color palette
     local palette = ffi.new("uint8_t[256][3]")
     ffi.copy(palette, data, 768)
+
+    data = nil
 
     return palette
 end
@@ -218,16 +202,232 @@ local function readTextures(file, lump)
         -- now generate an image
         local blob = lovr.data.newBlob(ffi.string(out_buffer, tex_size * 4), tex_name)
         local image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob)
-        table.insert(textures, image)
-
-        channel:push({
-            type = 'image',
-            data = image,
+        table.insert(textures, {
+            image = image,
             name = tex_name,
+            width = tex_info.width,
+            height = tex_info.height,
         })
     end
 
     return textures
+end
+
+local function readVertices(file, lump)
+    file:seek('set', lump.offset)
+    local count = math.floor(lump.length / ffi.sizeof('vec3_t'))
+
+    -- Read entire lump at once
+    local data = file:read(lump.length)
+    if not data then return {} end
+
+    -- Cast the entire buffer into an array of the structure type
+    local array = ffi.cast('vec3_t*', data)
+
+    -- Convert to Lua table
+    local result = {}
+    for i = 1, count do
+        local v = array[i - 1] -- Adjust 0-based index
+        result[i] = lovr.math.newVec3(v.x, v.y, v.z)
+    end
+    
+    array = nil
+
+    return result
+end
+
+local function readSurfaces(file, lump)
+    file:seek('set', lump.offset)
+    local count = math.floor(lump.length / ffi.sizeof('surface_t'))
+
+    -- Read entire lump at once
+    local data = file:read(lump.length)
+    if not data then return {} end
+
+    -- Cast the entire buffer into an array of the structure type
+    local array = ffi.cast('surface_t*', data)
+
+    -- Convert to Lua table
+    local result = {}
+    for i = 1, count do
+        local v = array[i - 1] -- Adjust 0-based index
+        result[i] = {
+            vector_s = lovr.math.newVec3(v.vectorS.x, v.vectorS.y, v.vectorS.z),
+            dist_s = tonumber(v.distS),
+            vector_t = lovr.math.newVec3(v.vectorT.x, v.vectorT.y, v.vectorT.z),
+            dist_t = tonumber(v.distT),
+            texture_id = tonumber(v.texture_id),
+            animated = tonumber(v.animated),
+        }
+    end
+
+    array = nil
+
+    return result
+end
+
+local function readPlanes(file, lump)
+    file:seek('set', lump.offset)
+    local count = math.floor(lump.length / ffi.sizeof('plane_t'))
+
+    -- Read entire lump at once
+    local data = file:read(lump.length)
+    if not data then return {} end
+
+    -- Cast the entire buffer into an array of the structure type
+    local array = ffi.cast('plane_t*', data)
+
+    -- Convert to Lua table
+    local result = {}
+    for i = 1, count do
+        local v = array[i - 1] -- Adjust 0-based index
+        result[i] = {
+            normal = lovr.math.newVec3(v.normal.x, v.normal.y, v.normal.z),
+            distance = tonumber(v.distance),
+            type = tonumber(type),
+        }
+    end
+
+    array = nil
+
+    return result
+end
+
+local function readFaces(file, lump)
+    file:seek('set', lump.offset)
+    local count = math.floor(lump.length / ffi.sizeof('face_t'))
+
+    -- Read entire lump at once
+    local data = file:read(lump.length)
+    if not data then return {} end
+
+    -- Cast the entire buffer into an array of the structure type
+    local array = ffi.cast('face_t*', data)      
+
+    -- Convert to Lua table
+    local result = {}
+    for i = 1, count do
+        local v = array[i - 1] -- Adjust 0-based index
+        result[i] = {
+            plane_id = tonumber(v.plane_id),
+            side = tonumber(v.side),
+            edge_id = tonumber(v.ledge_id),
+            num_edges = tonumber(v.ledge_num),
+            surface_id = tonumber(v.texinfo_id),
+            type_light = tonumber(v.typelight),
+            base_light = tonumber(v.baselight),
+            light_map = tonumber(v.lightmap),
+            lights = {},
+        }
+
+        for j = 0, 1 do
+            table.insert(result[i].lights, tonumber(v.lights[j]))
+        end
+    end
+
+    array = nil
+
+    return result
+end
+
+local function readEdges(file, lump)
+    file:seek('set', lump.offset)
+    local count = math.floor(lump.length / ffi.sizeof('edge_t'))
+
+    -- Read entire lump at once
+    local data = file:read(lump.length)
+    if not data then return {} end
+
+    -- Cast the entire buffer into an array of the structure type
+    local array = ffi.cast('edge_t*', data)
+
+    -- Convert to Lua table
+    local result = {}
+    for i = 1, count do
+        local v = array[i - 1] -- Adjust 0-based index
+        result[i] = {
+            vertex0 = tonumber(v.vertex0),
+            vertex1 = tonumber(v.vertex1),
+        }
+    end
+
+    array = nil
+
+    return result
+end
+
+local function readEdgeList(file, lump)
+    file:seek('set', lump.offset)
+    local count = math.floor(lump.length / ffi.sizeof('int32_t'))
+
+    -- Read entire lump at once
+    local data = file:read(lump.length)
+    if not data then return {} end
+
+    -- Cast the entire buffer into an array of the structure type
+    local array = ffi.cast('int32_t*', data)
+
+    -- Convert to Lua table
+    local result = {}
+    for i = 1, count do
+        local v = array[i - 1] -- Adjust 0-based index
+        result[i] = tonumber(v)
+    end
+
+    array = nil
+
+    return result
+end
+
+local function readGeometry(bsp, faces, edges, edge_list)
+    local results = {}
+
+    for face_idx, face in ipairs(faces) do
+        local num_edges = face.num_edges
+
+        local surface = bsp.surfaces[face.surface_id + 1]
+        local texture = bsp.textures[surface.texture_id + 1]
+
+        if (string.find(texture.name, 'clip') or 
+            string.find(texture.name, 'trigger')) then
+            goto continue
+        end
+
+        for edge = 1, num_edges do
+            local edge_idx = edge_list[edge + face.edge_id]
+            local vertex_idx = 0
+            local vertices = {}
+
+            if edge_idx < 0 then
+                vertex_idx = edges[math.abs(edge_idx) + 1].vertex1
+            else
+                vertex_idx = edges[edge_idx + 1].vertex0
+            end
+
+            local vertex = bsp.vertices[vertex_idx + 1]
+
+            local normal = bsp.planes[face.plane_id + 1].normal
+
+            local position = lovr.math.newVec3(vertex.x, vertex.z, -vertex.y)
+
+            local u = (vertex:dot(surface.vector_s) + surface.dist_s) / texture.width
+            local v = (vertex:dot(surface.vector_t) + surface.dist_t) / texture.height
+
+            local tex_coord = lovr.math.newVec2()
+
+            table.insert(results, {
+                vertices = vertices,
+                texture = texture.image,
+                normal = normal,
+                position = position,
+                tex_coord = tex_coord,
+            })
+        end
+
+        ::continue::
+    end
+
+    return results
 end
 
 local file = io.open(filename, 'rb')
@@ -236,55 +436,37 @@ if not file then
     return nil
 end
 
-local bsp = { 
-    header      = {},
-    -- lumps
-    entities    = {},
-    planes      = {}, 
-    miptex      = {}, -- 3
+local bsp = {
+    textures    = {},
     vertices    = {},
-    visilist    = {},
-    nodes       = {}, -- 6
-    texinfo     = {},
-    faces       = {},
-    lightmaps   = {}, -- 9
-    clipnodes   = {},
-    leafs       = {}, 
-    lface       = {}, -- 12
-    edges       = {},
-    ledges      = {},        
-    models      = {}, -- 15
+    planes      = {},
+    surfaces    = {}, -- texinfo
+    geometry    = {}, -- geometry saved here
 }
 
-bsp.header = readHeader(file)
-print("version: " .. bsp.header.version)
+local header = readHeader(file)
+print(string.format("\nversion: %d\n", header.version))
 
 while true do
-    bsp.planes = readLump(file, bsp.header.planes, 'plane_t')
-    print('planes: ' .. #bsp.planes)
-    bsp.miptex = readTextures(file, bsp.header.miptex)
-    print('miptex: ' .. #bsp.miptex)
-    bsp.vertices = readLump(file, bsp.header.vertices, 'vertex_t')
-    print('vertices: ' .. #bsp.vertices)
-    bsp.texinfo = readLump(file, bsp.header.texinfo, 'surface_t')
-    print('texinfo: ' .. #bsp.texinfo)
-    bsp.faces = readLump(file, bsp.header.faces, 'face_t')
-    print('faces: ' .. #bsp.faces)
-    bsp.lface = readLump(file, bsp.header.lface, 'uint16_t')
-    print('lface: ' .. #bsp.lface)
-    bsp.edges = readLump(file, bsp.header.edges, 'edge_t')
-    print('edges: ' .. #bsp.edges)
-    bsp.models = readLump(file, bsp.header.models, 'model_t')
-    print('models: ' .. #bsp.models)
+    bsp.textures = readTextures(file, header.lumps[3])
+    bsp.vertices = readVertices(file, header.lumps[4])
+    bsp.planes = readPlanes(file, header.lumps[2])
+    bsp.surfaces = readSurfaces(file, header.lumps[7])
 
-    print('faces', bsp.models[1].face_num)
+    local faces = readFaces(file, header.lumps[8])
+    local edges = readEdges(file, header.lumps[13])
+    local edge_list = readEdgeList(file, header.lumps[14])
 
-    -- TODO: in order to push BSP structure, first serialize to a supported type
-    -- channel:push(bsp)
+    bsp.geometry = readGeometry(bsp, faces, edges, edge_list)
+
+    channel:push(bsp)
 
     break
 end
 
+for k, v in pairs(bsp) do
+    print(k, #v)
+end
 
 file:close()
 
