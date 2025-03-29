@@ -17,27 +17,12 @@ function lovr.update(dt)
         bsp = channel:pop(true)
 
         if type(bsp) == 'table' then
-            print('generate meshes')
-
---[[
-    -- Create index list for triangle fan
-    local indices = {}
-    for i = 2, #vertices - 1 do
-        table.insert(indices, 1)   -- Center vertex
-        table.insert(indices, i)   -- Current outer vertex
-        table.insert(indices, i+1) -- Next outer vertex
-    end
-
-    -- Close the fan (connect last vertex back to the first outer vertex)
-    table.insert(indices, 1)       -- Center
-    table.insert(indices, #vertices) -- Last outer vertex
-    table.insert(indices, 2)       -- First outer vertex
-
-]]        
+            print('generate meshes') 
 
             for _, geometry in ipairs(bsp.geometry) do
                 local vertices = {}            
 
+                -- emulate GL_TRIANGLE_FAN
                 for i = 2, #geometry.vertices - 1 do
                     vertex1 = geometry.vertices[1]
                     vertex2 = geometry.vertices[i]
@@ -69,7 +54,6 @@ function lovr.update(dt)
 
                 local mesh = lovr.graphics.newMesh(vertices)
                 mesh:setMaterial(geometry.image)
-                -- mesh:setDrawMode('lines')
 
                 table.insert(meshes, mesh)
             end
@@ -78,7 +62,7 @@ function lovr.update(dt)
 end
 
 function lovr.draw(pass)
-    -- pass:setWireframe(true)
+    pass:setWireframe(true)
     for _, mesh in ipairs(meshes) do
         pass:draw(mesh)
     end
