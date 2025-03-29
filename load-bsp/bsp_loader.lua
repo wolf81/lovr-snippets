@@ -257,7 +257,7 @@ local function readSurfaces(file, lump)
             dist_s = tonumber(v.distS),
             vector_t = lovr.math.newVec3(v.vectorT.x, v.vectorT.y, v.vectorT.z),
             dist_t = tonumber(v.distT),
-            texture_id = tonumber(v.texture_id),
+            texture_id = tonumber(v.texture_id + 1),
             animated = tonumber(v.animated),
         }
     end
@@ -310,11 +310,11 @@ local function readFaces(file, lump)
     for i = 1, count do
         local v = array[i - 1] -- Adjust 0-based index
         result[i] = {
-            plane_id = tonumber(v.plane_id),
+            plane_id = tonumber(v.plane_id + 1),
             side = tonumber(v.side),
-            edge_id = tonumber(v.ledge_id),
+            edge_id = tonumber(v.ledge_id + 1),
             num_edges = tonumber(v.ledge_num),
-            surface_id = tonumber(v.texinfo_id),
+            surface_id = tonumber(v.texinfo_id + 1),
             type_light = tonumber(v.typelight),
             base_light = tonumber(v.baselight),
             light_map = tonumber(v.lightmap),
@@ -347,8 +347,8 @@ local function readEdges(file, lump)
     for i = 1, count do
         local v = array[i - 1] -- Adjust 0-based index
         result[i] = {
-            vertex0 = tonumber(v.vertex0),
-            vertex1 = tonumber(v.vertex1),
+            vertex0 = tonumber(v.vertex0 + 1),
+            vertex1 = tonumber(v.vertex1 + 1),
         }
     end
 
@@ -383,11 +383,11 @@ end
 local function readGeometry(bsp, faces, edges, edge_list)
     local results = {}
 
-    for face_idx, face in ipairs(faces) do
+    for _, face in ipairs(faces) do
         local num_edges = face.num_edges
 
-        local surface = bsp.surfaces[face.surface_id + 1]
-        local texture = bsp.textures[surface.texture_id + 1]
+        local surface = bsp.surfaces[face.surface_id]
+        local texture = bsp.textures[surface.texture_id]
 
         if (string.find(texture.name, 'clip') or 
             string.find(texture.name, 'trigger')) then
@@ -397,18 +397,18 @@ local function readGeometry(bsp, faces, edges, edge_list)
         local vertices = {}
 
         for edge = 1, num_edges do
-            local edge_idx = edge_list[edge + face.edge_id]
-            local vertex_idx = 0
+            local edge_id = edge_list[edge + face.edge_id]
+            local vertex_id = 0
 
-            if edge_idx < 0 then
-                vertex_idx = edges[math.abs(edge_idx) + 1].vertex1
+            if edge_id < 0 then
+                vertex_id = edges[math.abs(edge_id)].vertex1
             else
-                vertex_idx = edges[edge_idx + 1].vertex0
+                vertex_id = edges[edge_id].vertex0
             end
 
-            local vertex = bsp.vertices[vertex_idx + 1]
+            local vertex = bsp.vertices[vertex_id]
 
-            local normal = bsp.planes[face.plane_id + 1].normal
+            local normal = bsp.planes[face.plane_id].normal
 
             local position = lovr.math.newVec3(vertex.x, vertex.z, -vertex.y)
 
