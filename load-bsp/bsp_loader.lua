@@ -5,6 +5,7 @@ local lovr = {
     math = require 'lovr.math',
     data = require 'lovr.data',
     thread = require 'lovr.thread',
+    graphics = require 'lovr.graphics',
     filesystem = require 'lovr.filesystem',
 }
 
@@ -203,7 +204,7 @@ local function readTextures(file, lump)
         local blob = lovr.data.newBlob(ffi.string(out_buffer, tex_size * 4), tex_name)
         local image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob)
         table.insert(textures, {
-            image = image,
+            image = lovr.graphics.newTexture(image, '2d'),
             name = tex_name,
             width = tex_info.width,
             height = tex_info.height,
@@ -393,10 +394,11 @@ local function readGeometry(bsp, faces, edges, edge_list)
             goto continue
         end
 
+        local vertices = {}
+
         for edge = 1, num_edges do
             local edge_idx = edge_list[edge + face.edge_id]
             local vertex_idx = 0
-            local vertices = {}
 
             if edge_idx < 0 then
                 vertex_idx = edges[math.abs(edge_idx) + 1].vertex1
@@ -412,17 +414,19 @@ local function readGeometry(bsp, faces, edges, edge_list)
 
             local u = (vertex:dot(surface.vector_s) + surface.dist_s) / texture.width
             local v = (vertex:dot(surface.vector_t) + surface.dist_t) / texture.height
+            local uv = lovr.math.newVec2(u, v)
 
-            local tex_coord = lovr.math.newVec2()
-
-            table.insert(results, {
-                vertices = vertices,
-                texture = texture.image,
-                normal = normal,
-                position = position,
-                tex_coord = tex_coord,
+            table.insert(vertices, {
+                normal      = normal,
+                position    = position,
+                uv          = uv,
             })
         end
+
+        table.insert(results, {
+            texture = texture.image,
+            vertices = vertices,
+        })
 
         ::continue::
     end
