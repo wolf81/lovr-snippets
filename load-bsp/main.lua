@@ -19,11 +19,11 @@ function lovr.update(dt)
 
         if type(bsp) == 'table' then
             print('generate textures')
-            for _, texture_info in ipairs(bsp.textures) do
-                table.insert(textures, lovr.graphics.newTexture(texture_info.image, {
+            for _, tex_info in ipairs(bsp.textures) do
+                table.insert(textures, lovr.graphics.newTexture(tex_info.image, {
                     type = '2d',
                     usage = { 'sample' },
-                    label = texture_info.name,
+                    label = tex_info.name,
                 }))
             end
 

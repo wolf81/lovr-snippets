@@ -192,7 +192,7 @@ local function readTextures(file, lump)
 
         -- replace indexed colors with colors from palette
         for j = 0, tex_size - 1 do
-            local color_idx = img_buffer[i]
+            local color_idx = img_buffer[j]
             out_buffer[j * 4 + 0] = palette[color_idx][0]
             out_buffer[j * 4 + 1] = palette[color_idx][1]
             out_buffer[j * 4 + 2] = palette[color_idx][2]
@@ -201,8 +201,10 @@ local function readTextures(file, lump)
 
         -- now generate an image
         local blob = lovr.data.newBlob(ffi.string(out_buffer, tex_size * 4), tex_name)
+        local image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob)
+
         table.insert(textures, {
-            image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob),
+            image = image,
             name = tex_name,
             width = tex_info.width,
             height = tex_info.height,
