@@ -5,7 +5,6 @@ local lovr = {
     math = require 'lovr.math',
     data = require 'lovr.data',
     thread = require 'lovr.thread',
-    graphics = require 'lovr.graphics',
     filesystem = require 'lovr.filesystem',
 }
 
@@ -119,7 +118,7 @@ local function readHeader(file)
     local data = file:read(ffi.sizeof('header_t'))
     if not data then return nil end
 
-    local raw = ffi.cast("header_t*", data)[0]
+    local raw = ffi.cast('header_t*', data)[0]
 
     local header = {
         version = tonumber(raw.version),
@@ -147,11 +146,11 @@ local function readPalette()
 
     -- 256 * 3 (rgb)
     if #data ~= 768 then
-        error("Invalid palette file size. Expected 768 bytes, got " .. #data)
+        error('Invalid palette file size. Expected 768 bytes, got ' .. #data)
     end
 
     -- 256-color palette
-    local palette = ffi.new("uint8_t[256][3]")
+    local palette = ffi.new('uint8_t[256][3]')
     ffi.copy(palette, data, 768)
 
     data = nil
@@ -202,13 +201,12 @@ local function readTextures(file, lump)
 
         -- now generate an image
         local blob = lovr.data.newBlob(ffi.string(out_buffer, tex_size * 4), tex_name)
-        local image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob)
-        textures[i - 1] = {
-            image = lovr.graphics.newTexture(image, '2d'),
+        table.insert(textures, {
+            image = lovr.data.newImage(tex_info.width, tex_info.height, 'rgba8', blob),
             name = tex_name,
             width = tex_info.width,
             height = tex_info.height,
-        }
+        })
     end
 
     return textures
@@ -257,7 +255,7 @@ local function readSurfaces(file, lump)
             dist_s = tonumber(v.distS),
             vector_t = lovr.math.newVec3(v.vectorT.x, v.vectorT.y, v.vectorT.z),
             dist_t = tonumber(v.distT),
-            texture_id = tonumber(v.texture_id),
+            texture_id = tonumber(v.texture_id + 1),
             animated = tonumber(v.animated),
         }
     end
@@ -424,7 +422,7 @@ local function readGeometry(bsp, faces, edges, edge_list)
         end
 
         table.insert(results, {
-            texture = texture.image,
+            texture_id = surface.texture_id,
             vertices = vertices,
         })
 
@@ -436,7 +434,7 @@ end
 
 local file = io.open(filename, 'rb')
 if not file then
-    print("Failed to open BSP file:", filename)
+    print('Failed to open BSP file: ' .. filename)
     return nil
 end
 
@@ -449,7 +447,7 @@ local bsp = {
 }
 
 local header = readHeader(file)
-print(string.format("\nversion: %d\n", header.version))
+print(string.format('\nversion: %d\n', header.version))
 
 while true do
     bsp.textures = readTextures(file, header.lumps[3])

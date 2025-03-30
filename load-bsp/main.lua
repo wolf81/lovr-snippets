@@ -5,6 +5,7 @@ local channel = lovr.thread.getChannel('status')
 local thread = lovr.thread.newThread('bsp_loader.lua')
 
 local meshes = {}
+local textures = {}
 
 function lovr.load()
     -- Start the thread
@@ -17,6 +18,15 @@ function lovr.update(dt)
         bsp = channel:pop(true)
 
         if type(bsp) == 'table' then
+            print('generate textures')
+            for _, texture_info in ipairs(bsp.textures) do
+                table.insert(textures, lovr.graphics.newTexture(texture_info.image, {
+                    type = '2d',
+                    usage = { 'sample' },
+                    label = texture_info.name,
+                }))
+            end
+
             print('generate meshes') 
 
             for _, geometry in ipairs(bsp.geometry) do
@@ -51,9 +61,9 @@ function lovr.update(dt)
                     })
                 end
 
-
+                local texture = textures[geometry.texture_id]
                 local mesh = lovr.graphics.newMesh(vertices)
-                mesh:setMaterial(geometry.image)
+                mesh:setMaterial(texture)
 
                 table.insert(meshes, mesh)
             end
@@ -62,8 +72,9 @@ function lovr.update(dt)
 end
 
 function lovr.draw(pass)
-    pass:setWireframe(true)
-    for _, mesh in ipairs(meshes) do
+    -- pass:setShader('normal')
+    -- pass:setWireframe(true)
+    for i, mesh in ipairs(meshes) do
         pass:draw(mesh)
     end
 end
