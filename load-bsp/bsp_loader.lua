@@ -226,15 +226,15 @@ local function readVertices(file, lump)
     local array = ffi.cast('vec3_t*', data)
 
     -- Convert to Lua table
-    local result = {}
+    local vertices = {}
     for i = 1, count do
         local v = array[i - 1]
-        table.insert(result, lovr.math.newVec3(v.x, v.y, v.z))
+        table.insert(vertices, lovr.math.newVec3(v.x, v.y, v.z))
     end
     
     array = nil
 
-    return result
+    return vertices
 end
 
 local function readSurfaces(file, lump)
@@ -249,10 +249,10 @@ local function readSurfaces(file, lump)
     local array = ffi.cast('surface_t*', data)
 
     -- Convert to Lua table
-    local result = {}
+    local surfaces = {}
     for i = 1, count do
         local v = array[i - 1] -- Adjust 0-based index
-        table.insert(result, {
+        table.insert(surfaces, {
             vector_s = lovr.math.newVec3(v.vectorS.x, v.vectorS.y, v.vectorS.z),
             dist_s = tonumber(v.distS),
             vector_t = lovr.math.newVec3(v.vectorT.x, v.vectorT.y, v.vectorT.z),
@@ -264,7 +264,7 @@ local function readSurfaces(file, lump)
 
     array = nil
 
-    return result
+    return surfaces
 end
 
 local function readPlanes(file, lump)
@@ -279,10 +279,10 @@ local function readPlanes(file, lump)
     local array = ffi.cast('plane_t*', data)
 
     -- Convert to Lua table
-    local result = {}
+    local planes = {}
     for i = 1, count do
         local v = array[i - 1] -- Adjust 0-based index
-        table.insert(result, {
+        table.insert(planes, {
             normal = lovr.math.newVec3(v.normal.x, v.normal.y, v.normal.z),
             distance = tonumber(v.distance),
             type = tonumber(type),
@@ -291,7 +291,7 @@ local function readPlanes(file, lump)
 
     array = nil
 
-    return result
+    return planes
 end
 
 local function readFaces(file, lump)
@@ -306,10 +306,10 @@ local function readFaces(file, lump)
     local array = ffi.cast('face_t*', data)      
 
     -- Convert to Lua table
-    local result = {}
+    local faces = {}
     for i = 1, count do
         local v = array[i - 1] -- Adjust 0-based index
-        table.insert(result, {
+        table.insert(faces, {
             plane_id = tonumber(v.plane_id + 1),
             side = tonumber(v.side),
             edge_id = tonumber(v.ledge_id + 1),
@@ -322,13 +322,13 @@ local function readFaces(file, lump)
         })
 
         for j = 0, 1 do
-            table.insert(result[i].lights, tonumber(v.lights[j]))
+            table.insert(faces[i].lights, tonumber(v.lights[j]))
         end
     end
 
     array = nil
 
-    return result
+    return faces
 end
 
 local function readEdges(file, lump)
@@ -343,18 +343,18 @@ local function readEdges(file, lump)
     local array = ffi.cast('edge_t*', data)
 
     -- Convert to Lua table
-    local result = {}
+    local edges = {}
     for i = 1, count do
         local v = array[i] -- Adjust 0-based index
-        result[i] = {
+        table.insert(edges, {
             vertex0 = tonumber(v.vertex0 + 1),
             vertex1 = tonumber(v.vertex1 + 1),
-        }
+        })
     end
 
     array = nil
 
-    return result
+    return edges
 end
 
 local function readEdgeList(file, lump)
@@ -369,15 +369,15 @@ local function readEdgeList(file, lump)
     local array = ffi.cast('int32_t*', data)
 
     -- Convert to Lua table
-    local result = {}
+    local edge_list = {}
     for i = 1, count do
         local v = array[i - 1] -- Adjust 0-based index
-        table.insert(result, tonumber(v))
+        table.insert(edge_list, tonumber(v))
     end
 
     array = nil
 
-    return result
+    return edge_list
 end
 
 local function readGeometry(bsp, faces, edges, edge_list)
