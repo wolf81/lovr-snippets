@@ -2,19 +2,21 @@
 local channel = lovr.thread.getChannel('status')
 
 -- Create a new thread called 'thread'
-local thread = lovr.thread.newThread('bsp_loader.lua')
+local thread = lovr.thread.newThread('pak_loader.lua')
 
 local meshes = {}
 local textures = {}
 
 function lovr.load()
     -- Start the thread
-    thread:start('e1m1.bsp')
+    -- thread:start('e1m1.bsp')
+    thread:start('pak0.pak')
 end
 
 function lovr.update(dt)
     -- Read and delete the message
     if channel:peek() then
+        --[[
         bsp = channel:pop(true)
 
         if type(bsp) == 'table' then
@@ -68,6 +70,7 @@ function lovr.update(dt)
                 table.insert(meshes, mesh)
             end
         end
+        ]]
     end
 end
 
