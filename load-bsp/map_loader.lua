@@ -156,24 +156,16 @@ local function readHeader()
 end
 
 local function readPalette()
-    local vfs_path = 'palette.lmp'
-    local dir_path = lovr.filesystem.getRealDirectory(vfs_path)
-    local path = dir_path .. '/' .. vfs_path
-    local file = io.open(path, 'rb')
-
-    local data = file:read("*all")  -- Read the entire file
-    file:close()
+    local palette_ptr = ffi.cast("char*", palette_data:getPointer())
 
     -- 256 * 3 (rgb)
-    if #data ~= 768 then
+    if palette_data:getSize() ~= 768 then
         error('Invalid palette file size. Expected 768 bytes, got ' .. #data)
     end
 
     -- 256-color palette
     local palette = ffi.new('uint8_t[256][3]')
-    ffi.copy(palette, data, 768)
-
-    data = nil
+    ffi.copy(palette, palette_ptr, palette_data:getSize())
 
     return palette
 end
