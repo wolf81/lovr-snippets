@@ -392,6 +392,25 @@ local function readEdgeList(lump)
     return edge_list
 end
 
+local function readEntities(lump)
+    cursor = lump.offset
+
+    local data = ffi.string(readBytes(lump.length))
+
+    -- Parse entities from raw text
+    local entities = {}
+
+    for entity in data:gmatch("{(.-)}") do
+        local parsed_entity = {}
+        for key, value in entity:gmatch('"(.-)"%s+"(.-)"') do
+            parsed_entity[key] = value
+        end
+        table.insert(entities, parsed_entity)
+    end
+
+    return entities
+end
+
 local function readGeometry(bsp, faces, edges, edge_list)
     local results = {}
 
@@ -447,34 +466,27 @@ local function readGeometry(bsp, faces, edges, edge_list)
 end
 
 local bsp = {
+    entities    = {},
     textures    = {},
     vertices    = {},
     planes      = {},
-    surfaces    = {}, -- texinfo
-    geometry    = {}, -- geometry saved here
+    surfaces    = {},
+    geometry    = {},
 }
 
 local header = readHeader()
 print(string.format('\nversion: %d\n', header.version))
 
-while true do
-    bsp.textures = readTextures(header.lumps[3])
-    bsp.vertices = readVertices(header.lumps[4])
-    bsp.planes = readPlanes(header.lumps[2])
-    bsp.surfaces = readSurfaces(header.lumps[7])
+bsp.entities = readEntities(header.lumps[1])
+bsp.textures = readTextures(header.lumps[3])
+bsp.vertices = readVertices(header.lumps[4])
+bsp.planes = readPlanes(header.lumps[2])
+bsp.surfaces = readSurfaces(header.lumps[7])
 
-    local faces = readFaces(header.lumps[8])
-    local edges = readEdges(header.lumps[13])
-    local edge_list = readEdgeList(header.lumps[14])
+local faces = readFaces(header.lumps[8])
+local edges = readEdges(header.lumps[13])
+local edge_list = readEdgeList(header.lumps[14])
 
-    bsp.geometry = readGeometry(bsp, faces, edges, edge_list)
+bsp.geometry = readGeometry(bsp, faces, edges, edge_list)
 
-    channel:push(bsp)
-
-    break
-end
-
-for k, v in pairs(bsp) do
-    print(k, #v)
-end
-
+channel:push(bsp)
