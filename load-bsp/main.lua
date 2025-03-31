@@ -1,27 +1,17 @@
 local Pak = require 'pak'
 
--- local meshes = {}
--- local textures = {}
-
-local pak = nil
+local meshes = {}
+local textures = {}
 
 function lovr.load()
-    pak = Pak('pak0.pak')
+    local pak = Pak('pak0.pak')
 
     for _, map_name in pairs(pak:mapNames()) do
         print('>', map_name)
     end
 
-    pak:loadMap(function()
+    pak:loadMap(function(bsp)
         print('done')
-    end)
-end
-
-function lovr.update(dt)
-    -- Read and delete the message
-    -- if channel:peek() then
-        --[[
-        bsp = channel:pop(true)
 
         if type(bsp) == 'table' then
             print('generate textures')
@@ -74,14 +64,17 @@ function lovr.update(dt)
                 table.insert(meshes, mesh)
             end
         end
-        ]]
-    -- end
+    end)
+end
+
+function lovr.update(dt)
+
 end
 
 function lovr.draw(pass)
     -- pass:setShader('normal')
     -- pass:setWireframe(true)
-    -- for i, mesh in ipairs(meshes) do
-    --     pass:draw(mesh)
-    -- end
+    for i, mesh in ipairs(meshes) do
+        pass:draw(mesh)
+    end
 end

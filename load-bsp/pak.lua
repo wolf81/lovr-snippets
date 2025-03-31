@@ -149,6 +149,10 @@ Pak.new = function(path)
         local palette_data = loadEntry(pak_path, palette_info[1])
 
         thread:start(channel, map_data, palette_data)
+        thread:wait()
+
+        local data = channel:pop()
+        fn(data)
     end
 
     return setmetatable({

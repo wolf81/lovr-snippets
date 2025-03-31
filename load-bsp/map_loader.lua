@@ -20,6 +20,10 @@ local map_data = args[2]
 -- palette blob
 local palette_data = args[3]
 
+-- keep track of read location
+local base_ptr = ffi.cast("char*", map_data:getPointer())
+local cursor = 0
+
 -- Define C-style structures for reading binary data efficiently
 ffi.cdef[[
     typedef struct { 
@@ -115,13 +119,23 @@ ffi.cdef[[
     } edge_t;   
 ]]
 
-local function readInt32(ptr)
-    local data = ffi.string(ptr, 4)
+local function readBytes(size)
+    if cursor + size > map_data:getSize() then
+        error("Attempt to read beyond Blob size.")
+    end
+    local ptr = base_ptr + cursor  -- Get current read position
+    cursor = cursor + size  -- Advance cursor
+    return ffi.string(ptr, size)  -- Read and return data
+end
+
+local function readInt32()
+    local data = readBytes(4)
     return ffi.cast('int32_t*', data)[0]
 end
 
-local function readHeader(ptr)
-    local data = ffi.string(ptr, ffi.sizeof('header_t'))
+local function readHeader()
+    cursor = 0
+    local data = readBytes(ffi.sizeof('header_t'))
     if not data then return nil end
 
     local raw = ffi.cast('header_t*', data)[0]
@@ -164,24 +178,23 @@ local function readPalette()
     return palette
 end
 
-local function readTextures(ptr, lump)
+local function readTextures(lump)
     local palette = readPalette()
 
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
-    local count = readInt32(ptr)
+    cursor = lump.offset
+    local count = readInt32()
 
     local offsets = {}
     for i = 1, count do
-        table.insert(offsets, readInt32(ptr))
+        table.insert(offsets, readInt32())
     end
 
     local textures = {}
-    --[[
     for i, offset in ipairs(offsets) do
         local miptex_offset = lump.offset + offset
-        file:seek('set', lump.offset + offset)
+        cursor = lump.offset + offset
 
-        local data = file:read(ffi.sizeof('miptex_t'))
+        local data = readBytes(ffi.sizeof('miptex_t'))
         if not data then return nil end
 
         local tex_info = ffi.cast('miptex_t*', data)
@@ -189,9 +202,9 @@ local function readTextures(ptr, lump)
         local tex_size = tex_info.width * tex_info.height
         local tex_offset = miptex_offset + tex_info.offset1
 
-        file:seek('set', tex_offset)
+        cursor = tex_offset
         -- image data contains only indexed colors from a palette
-        local img_data = file:read(tex_size)
+        local img_data = readBytes(tex_size)
         local img_buffer = ffi.cast('uint8_t*', img_data)
         -- output image will convert color index to rgba
         local out_size = tex_size * 4
@@ -217,17 +230,16 @@ local function readTextures(ptr, lump)
             height = tex_info.height,
         })
     end
-    --]]
 
     return textures
 end
 
-local function readVertices(ptr, lump)
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
+local function readVertices(lump)
+    cursor = lump.offset
     local count = math.floor(lump.length / ffi.sizeof('vec3_t'))
 
     -- Read entire lump at once
-    local data = ffi.string(offset_ptr, lump.length)
+    local data = readBytes(lump.length)
     if not data then return {} end
 
     -- Cast the entire buffer into an array of the structure type
@@ -245,12 +257,12 @@ local function readVertices(ptr, lump)
     return vertices
 end
 
-local function readSurfaces(ptr, lump)
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
+local function readSurfaces(lump)
+    cursor = lump.offset
     local count = math.floor(lump.length / ffi.sizeof('surface_t'))
 
     -- Read entire lump at once
-    local data = ffi.string(offset_ptr, lump.length)
+    local data = readBytes(lump.length)
     if not data then return {} end
 
     -- Cast the entire buffer into an array of the structure type
@@ -275,12 +287,12 @@ local function readSurfaces(ptr, lump)
     return surfaces
 end
 
-local function readPlanes(ptr, lump)
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
+local function readPlanes(lump)
+    cursor = lump.offset
     local count = math.floor(lump.length / ffi.sizeof('plane_t'))
 
     -- Read entire lump at once
-    local data = ffi.string(offset_ptr, lump.length)
+    local data = readBytes(lump.length)
     if not data then return {} end
 
     -- Cast the entire buffer into an array of the structure type
@@ -302,12 +314,12 @@ local function readPlanes(ptr, lump)
     return planes
 end
 
-local function readFaces(ptr, lump)
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
+local function readFaces(lump)
+    cursor = lump.offset
     local count = math.floor(lump.length / ffi.sizeof('face_t'))
 
     -- Read entire lump at once
-    local data = ffi.string(offset_ptr, lump.length)
+    local data = readBytes(lump.length)
     if not data then return {} end
 
     -- Cast the entire buffer into an array of the structure type
@@ -339,12 +351,12 @@ local function readFaces(ptr, lump)
     return faces
 end
 
-local function readEdges(ptr, lump)
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
+local function readEdges(lump)
+    cursor = lump.offset
     local count = math.floor(lump.length / ffi.sizeof('edge_t'))
 
     -- Read entire lump at once
-    local data = ffi.string(offset_ptr, lump.length)
+    local data = readBytes(lump.length)
     if not data then return {} end
 
     -- Cast the entire buffer into an array of the structure type
@@ -365,12 +377,12 @@ local function readEdges(ptr, lump)
     return edges
 end
 
-local function readEdgeList(ptr, lump)
-    local offset_ptr = ffi.cast("char*", ptr) + lump.offset
+local function readEdgeList(lump)
+    cursor = lump.offset
     local count = math.floor(lump.length / ffi.sizeof('int32_t'))
 
     -- Read entire lump at once
-    local data = ffi.string(offset_ptr, lump.length)
+    local data = readBytes(lump.length)
     if not data then return {} end
 
     -- Cast the entire buffer into an array of the structure type
@@ -450,20 +462,18 @@ local bsp = {
     geometry    = {}, -- geometry saved here
 }
 
-local map_ptr = map_data:getPointer()
-
-local header = readHeader(map_ptr)
+local header = readHeader()
 print(string.format('\nversion: %d\n', header.version))
 
 while true do
-    bsp.textures = readTextures(map_ptr, header.lumps[3])
-    bsp.vertices = readVertices(map_ptr, header.lumps[4])
-    bsp.planes = readPlanes(map_ptr, header.lumps[2])
-    bsp.surfaces = readSurfaces(map_ptr, header.lumps[7])
+    bsp.textures = readTextures(header.lumps[3])
+    bsp.vertices = readVertices(header.lumps[4])
+    bsp.planes = readPlanes(header.lumps[2])
+    bsp.surfaces = readSurfaces(header.lumps[7])
 
-    local faces = readFaces(map_ptr, header.lumps[8])
-    local edges = readEdges(map_ptr, header.lumps[13])
-    local edge_list = readEdgeList(map_ptr, header.lumps[14])
+    local faces = readFaces(header.lumps[8])
+    local edges = readEdges(header.lumps[13])
+    local edge_list = readEdgeList(header.lumps[14])
 
     bsp.geometry = readGeometry(bsp, faces, edges, edge_list)
 
