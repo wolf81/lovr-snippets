@@ -1,21 +1,25 @@
--- Create a new status channel
-local channel = lovr.thread.getChannel('status')
+local Pak = require 'pak'
 
--- Create a new thread called 'thread'
-local thread = lovr.thread.newThread('pak_loader.lua')
+-- local meshes = {}
+-- local textures = {}
 
-local meshes = {}
-local textures = {}
+local pak = nil
 
 function lovr.load()
-    -- Start the thread
-    -- thread:start('e1m1.bsp')
-    thread:start('pak0.pak')
+    pak = Pak('pak0.pak')
+
+    for _, map_name in pairs(pak:mapNames()) do
+        print('>', map_name)
+    end
+
+    pak:loadMap(function()
+        print('done')
+    end)
 end
 
 function lovr.update(dt)
     -- Read and delete the message
-    if channel:peek() then
+    -- if channel:peek() then
         --[[
         bsp = channel:pop(true)
 
@@ -71,13 +75,13 @@ function lovr.update(dt)
             end
         end
         ]]
-    end
+    -- end
 end
 
 function lovr.draw(pass)
     -- pass:setShader('normal')
     -- pass:setWireframe(true)
-    for i, mesh in ipairs(meshes) do
-        pass:draw(mesh)
-    end
+    -- for i, mesh in ipairs(meshes) do
+    --     pass:draw(mesh)
+    -- end
 end
