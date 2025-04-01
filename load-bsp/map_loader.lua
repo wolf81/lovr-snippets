@@ -21,7 +21,7 @@ local map_data = args[2]
 local palette_data = args[3]
 
 -- keep track of read location
-local base_ptr = ffi.cast("char*", map_data:getPointer())
+local base_ptr = ffi.cast('char*', map_data:getPointer())
 local cursor = 0
 
 -- Define C-style structures for reading binary data efficiently
@@ -121,7 +121,7 @@ ffi.cdef[[
 
 local function readBytes(size)
     if cursor + size > map_data:getSize() then
-        error("Attempt to read beyond Blob size.")
+        error('Attempt to read beyond Blob size.')
     end
     local ptr = base_ptr + cursor  -- Get current read position
     cursor = cursor + size  -- Advance cursor
@@ -359,8 +359,8 @@ local function readEdges(lump)
     for i = 1, count do
         local v = array[i] -- Adjust 0-based index
         table.insert(edges, {
-            vertex0 = tonumber(v.vertex0 + 1),
-            vertex1 = tonumber(v.vertex1 + 1),
+            vertex1 = tonumber(v.vertex0 + 1),
+            vertex2 = tonumber(v.vertex1 + 1),
         })
     end
 
@@ -400,7 +400,7 @@ local function readEntities(lump)
     -- Parse entities from raw text
     local entities = {}
 
-    for entity in data:gmatch("{(.-)}") do
+    for entity in data:gmatch('{(.-)}') do
         local parsed_entity = {}
         for key, value in entity:gmatch('"(.-)"%s+"(.-)"') do
             parsed_entity[key] = value
@@ -432,9 +432,9 @@ local function readGeometry(bsp, faces, edges, edge_list)
             local vertex_id = 0
 
             if edge_id < 0 then
-                vertex_id = edges[math.abs(edge_id)].vertex1
+                vertex_id = edges[math.abs(edge_id)].vertex2
             else
-                vertex_id = edges[edge_id].vertex0
+                vertex_id = edges[edge_id].vertex1
             end
 
             local vertex = bsp.vertices[vertex_id]
